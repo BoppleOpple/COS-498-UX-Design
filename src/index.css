@@ -1,0 +1,422 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+}
+
+body {
+  font-family: Arial, sans-serif;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+:root {
+  --left-panel-bg: #8fb08d;
+  --right-panel-bg: #c8efc1;
+
+  --dark-green: #365849;
+  --mid-green: #5f8368;
+  --run-green: #425d4f;
+
+  --editor-divider: #375847;
+
+  --output-bg: #152b22;
+  --output-text: #39ff14;
+
+  --lion-bg: #e7bf72;
+  --panda-bg: #df9598;
+
+  --tutor-bubble: #edc391;
+  --user-bubble: #496153;
+
+  --input-bg: #efefef;
+  --modal-bg: #eef5ee;
+  --overlay: rgba(0, 0, 0, 0.25);
+}
+
+/* APP LAYOUT */
+
+.app {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 520px;
+  width: 100%;
+  height: 100vh;
+  transition: grid-template-columns 0.2s ease;
+}
+
+.app.tutor-collapsed {
+  grid-template-columns: minmax(0, 1fr) 0px;
+}
+
+/* LEFT PANEL */
+
+.left-panel {
+  background: var(--left-panel-bg);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+}
+
+.top-bar {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.top-left,
+.top-right {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.icon-button,
+.tab,
+.action-button {
+  border: none;
+  border-radius: 8px;
+  padding: 10px 14px;
+  cursor: pointer;
+  color: white;
+}
+
+.icon-button {
+  background: var(--dark-green);
+}
+
+.tab {
+  background: var(--mid-green);
+}
+
+.tab.active {
+  background: var(--dark-green);
+}
+
+.action-button {
+  background: var(--mid-green);
+}
+
+.run-button {
+  background: var(--run-green);
+}
+
+.editor-section {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.editor-wrapper {
+  flex: 1;
+  min-height: 0;
+  border: 1px solid var(--editor-divider);
+  overflow: hidden;
+}
+
+.bottom-section {
+  height: 180px;
+}
+
+.output-box {
+  background: var(--output-bg);
+  color: var(--output-text);
+  padding: 16px;
+  overflow: auto;
+  height: 100%;
+}
+
+.output-box pre {
+  white-space: pre-wrap;
+}
+
+.panel-title {
+  font-weight: bold;
+  margin-bottom: 12px;
+}
+
+/* RIGHT PANEL */
+
+.right-panel {
+  position: relative;
+  background: var(--right-panel-bg);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: visible;
+  border-left: none;
+}
+
+.right-panel.collapsed {
+  background: transparent;
+  border-left: none;
+}
+
+/* CHEVRON STRIP */
+.collapse-toggle {
+  position: absolute;
+  left: -18px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 42px;
+  border: none;
+  background: var(--mid-green);
+  color: white;
+  cursor: pointer;
+  z-index: 20;
+  border-radius: 6px 0 0 6px;
+  font-size: 16px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.right-panel-content {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* PERSONA SELECTOR */
+
+.persona-selector {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  height: 110px;
+  margin-left: 0;
+}
+
+.persona-button {
+  border: none;
+  cursor: pointer;
+  font-size: 24px;
+  font-weight: bold;
+  color: white;
+}
+
+.persona-button.lion {
+  background: var(--lion-bg);
+}
+
+.persona-button.panda {
+  background: var(--panda-bg);
+}
+
+.persona-button.selected {
+  outline: 4px solid rgba(255, 255, 255, 0.85);
+  outline-offset: -8px;
+}
+
+/* CHAT */
+
+.chat-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  min-height: 0;
+}
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding-bottom: 12px;
+}
+
+.chat-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.tutor-row {
+  justify-content: flex-start;
+}
+
+.user-row {
+  justify-content: flex-end;
+}
+
+.avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--lion-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.chat-message {
+  max-width: 70%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  line-height: 1.4;
+}
+
+.tutor-message {
+  background: var(--tutor-bubble);
+  color: black;
+  align-self: flex-start;
+}
+
+.user-message {
+  background: var(--user-bubble);
+  color: white;
+  align-self: flex-end;
+}
+
+/* CHAT INPUT */
+
+.chat-input-row {
+  display: grid;
+  grid-template-columns: 1fr 90px;
+  gap: 8px;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  padding: 4px;
+  transition: border 0.15s ease;
+}
+
+.chat-input-row.focused {
+  border: 2px solid #4a90e2;
+}
+
+.chat-input-row.error {
+  border: 2px solid #e04f4f;
+}
+
+.chat-input-row input {
+  border: none;
+  outline: none;
+  padding: 12px;
+  background: var(--input-bg);
+}
+
+.chat-input-row button {
+  border: none;
+  border-radius: 4px;
+  padding: 10px;
+  transition: all 0.15s ease;
+}
+
+.send-disabled {
+  background: #cfcfcf;
+  color: #666;
+  cursor: not-allowed;
+}
+
+.send-active {
+  background: #2f4d3d;
+  color: white;
+  cursor: pointer;
+}
+
+.send-active:hover {
+  background: #3c5f4b;
+}
+
+/* MODALS */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+
+.modal {
+  background: var(--modal-bg);
+  padding: 30px;
+  border-radius: 10px;
+  text-align: center;
+  min-width: 320px;
+  max-width: 420px;
+}
+
+.modal h3 {
+  margin-bottom: 16px;
+}
+
+.modal p {
+  margin-bottom: 16px;
+}
+
+.modal-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 15px;
+}
+
+.modal button {
+  padding: 10px 18px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  transition: all 0.15s ease;
+}
+
+.modal button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.modal .lion {
+  background: var(--lion-bg);
+}
+
+.modal .panda {
+  background: var(--panda-bg);
+}
+
+.modal-buttons button:first-child {
+  background: #4f7f65;
+  color: white;
+}
+
+.modal-buttons button:last-child {
+  background: #d6d6d6;
+  color: #333;
+}
+
+.uploaded-files {
+  margin-top: 10px;
+  text-align: left;
+}
+
+.uploaded-files ul {
+  margin-top: 6px;
+  padding-left: 18px;
+}
+
+.uploaded-files li {
+  margin-bottom: 4px;
+  font-size: 14px;
+}
