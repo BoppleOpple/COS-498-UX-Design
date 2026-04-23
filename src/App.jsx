@@ -1,17 +1,47 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Editor from "@monaco-editor/react";
+import lionImg from "./assets/lionDraft 1.png";
+import pandaImg from "./assets/redPandaDraft 1.png";
 
-function App() {
+const DEFAULT_CODE = `print("Hello world")`;
+
+const DEFAULT_TUTOR_MESSAGES = {
+  lion: "Hi! I’m your lion tutor. Ask me about your code whenever you want.",
+  panda: "Hi! I’m your panda tutor. Ask me about your code whenever you want.",
+};
+
+const MIN_RIGHT_PANEL_WIDTH = 320;
+const MAX_RIGHT_PANEL_WIDTH = 900;
+const DEFAULT_RIGHT_PANEL_WIDTH = 640;
+
+export default function App() {
   const [hasError, setHasError] = useState(false);
   const [isChatFocused, setIsChatFocused] = useState(false);
   const [isTutorCollapsed, setIsTutorCollapsed] = useState(false);
 
   const [selectedPersona, setSelectedPersona] = useState("lion");
+  const [pendingPersona, setPendingPersona] = useState(null);
+
   const [showTutorModal, setShowTutorModal] = useState(true);
   const [showUploadPrompt, setShowUploadPrompt] = useState(false);
   const [showFileConfirm, setShowFileConfirm] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showResetWarning, setShowResetWarning] = useState(false);
 
-  const [code, setCode] = useState(`print("Hello world")`);
+  const [accessibilityMode, setAccessibilityMode] = useState(false);
+  const [textSize, setTextSize] = useState(16);
+
+  const [tabs, setTabs] = useState([
+    {
+      id: "main.py",
+      name: "main.py",
+      language: "python",
+      content: DEFAULT_CODE,
+      isBinary: false,
+    },
+  ]);
+  const [activeTabId, setActiveTabId] = useState("main.py");
+
   const [output, setOutput] = useState("Program output will appear here.");
   const [chatInput, setChatInput] = useState("");
   const [messages, setMessages] = useState([
@@ -23,9 +53,18 @@ function App() {
   ]);
 
   const [isLoading, setIsLoading] = useState(false);
-  const [uploadedFile, setUploadedFile] = useState(null);
+  const [uploadedFiles, setUploadedFiles] = useState([]);
+  const [rightPanelWidth, setRightPanelWidth] = useState(DEFAULT_RIGHT_PANEL_WIDTH);
 
   const workerRef = useRef(null);
+  const appRef = useRef(null);
+  const isResizingRef = useRef(false);
+  const lastExpandedWidthRef = useRef(DEFAULT_RIGHT_PANEL_WIDTH);
+
+  const activeTab = useMemo(
+    () => tabs.find((tab) => tab.id === activeTabId) || tabs[0],
+    [tabs, activeTabId]
+  );
 
   useEffect(() => {
     workerRef.current = new Worker(
@@ -34,16 +73,10 @@ function App() {
     );
 
     workerRef.current.onmessage = (event) => {
-      const { output, ok } = event.data;
-
-      setOutput(output);
+      const { output: workerOutput, ok } = event.data;
+      setOutput(workerOutput);
       setIsLoading(false);
-
-      if (ok === false || output.toLowerCase().includes("error")) {
-        setHasError(true);
-      } else {
-        setHasError(false);
-      }
+      setHasError(ok === false || workerOutput.toLowerCase().includes("error"));
     };
 
     return () => {
@@ -51,10 +84,116 @@ function App() {
     };
   }, []);
 
+  useEffect(() => {
+    function handleMouseMove(event) {
+      if (!isResizingRef.current || !appRef.current || isTutorCollapsed) return;
+
+      const appRect = appRef.current.getBoundingClientRect();
+      const nextWidth = appRect.right - event.clientX;
+      const clampedWidth = Math.max(
+        MIN_RIGHT_PANEL_WIDTH,
+        Math.min(MAX_RIGHT_PANEL_WIDTH, nextWidth)
+      );
+
+      setRightPanelWidth(clampedWidth);
+      lastExpandedWidthRef.current = clampedWidth;
+    }
+
+    function handleMouseUp() {
+      isResizingRef.current = false;
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    }
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isTutorCollapsed]);
+
+  function handleEditorWillMount(monaco) {
+    monaco.editor.defineTheme("softGreenTheme", {
+      base: "vs",
+      inherit: true,
+      rules: [],
+      colors: {
+        "editor.background": "#b8dbb2",
+        "editor.foreground": "#13251c",
+        "editorGutter.background": "#9fcb99",
+        "editorGutter.border": "#355646",
+        "editorLineNumber.foreground": "#244336",
+        "editorLineNumber.activeForeground": "#12251d",
+        "editorCursor.foreground": "#12251d",
+        "editor.selectionBackground": "#8dc289",
+        "editor.inactiveSelectionBackground": "#a1cf9d",
+        "editor.lineHighlightBackground": "#b2d7ac",
+      },
+    });
+
+    monaco.editor.defineTheme("accessibilityTheme", {
+      base: "vs",
+      inherit: true,
+      rules: [],
+      colors: {
+        "editor.background": "#fff7cc",
+        "editor.foreground": "#1a1540",
+        "editorGutter.background": "#f4e58a",
+        "editorGutter.border": "#5a35c8",
+        "editorLineNumber.foreground": "#5a35c8",
+        "editorLineNumber.activeForeground": "#22155f",
+        "editorCursor.foreground": "#d9480f",
+        "editor.selectionBackground": "#b8a4ff",
+        "editor.inactiveSelectionBackground": "#d7cbff",
+        "editor.lineHighlightBackground": "#fff0a8",
+      },
+    });
+  }
+
+  function handleChooseTutor(persona) {
+    setSelectedPersona(persona);
+    setShowTutorModal(false);
+    setShowUploadPrompt(true);
+    setMessages([
+      {
+        id: 1,
+        sender: "tutor",
+        text: DEFAULT_TUTOR_MESSAGES[persona],
+      },
+    ]);
+  }
+
+  function attemptPersonaSwitch(newPersona) {
+    if (newPersona === selectedPersona) return;
+
+    if (messages.length <= 1) {
+      setSelectedPersona(newPersona);
+      setMessages([
+        {
+          id: 1,
+          sender: "tutor",
+          text: DEFAULT_TUTOR_MESSAGES[newPersona],
+        },
+      ]);
+      return;
+    }
+
+    setPendingPersona(newPersona);
+    setShowResetWarning(true);
+  }
+
   function handleRun() {
+    if (!activeTab || activeTab.isBinary) {
+      setOutput("This file cannot be run in the Python editor.");
+      setHasError(true);
+      return;
+    }
+
     setIsLoading(true);
     setOutput("Loading Python...");
-    workerRef.current?.postMessage({ code });
+    workerRef.current?.postMessage({ code: activeTab.content });
   }
 
   function handleSendMessage() {
@@ -82,66 +221,184 @@ function App() {
     setChatInput("");
   }
 
-  function handleEditorWillMount(monaco) {
-    monaco.editor.defineTheme("softGreenTheme", {
-      base: "vs",
-      inherit: true,
-      rules: [],
-      colors: {
-        "editor.background": "#bfe7b9",
-        "editor.foreground": "#1f2f26",
-        "editorGutter.background": "#a7d3a2",
-        "editorGutter.border": "#375847",
-        "editorLineNumber.foreground": "#2f4d3d",
-        "editorLineNumber.activeForeground": "#1f2f26",
-        "editorCursor.foreground": "#1f2f26",
-        "editor.selectionBackground": "#9ed39a",
-        "editor.inactiveSelectionBackground": "#aedcab",
-        "editor.lineHighlightBackground": "#b6e0b0",
-      },
+  function updateTabContent(tabId, value) {
+    setTabs((prev) =>
+      prev.map((tab) =>
+        tab.id === tabId ? { ...tab, content: value || "" } : tab
+      )
+    );
+  }
+
+  function addNewPythonTab() {
+    const newId = `main-${Date.now()}.py`;
+    const newTabNumber = tabs.filter((tab) => tab.name.startsWith("main")).length;
+
+    const newTab = {
+      id: newId,
+      name: `main-${newTabNumber}.py`,
+      language: "python",
+      content: "",
+      isBinary: false,
+    };
+
+    setTabs((prev) => [...prev, newTab]);
+    setActiveTabId(newId);
+  }
+
+  function closeTab(tabId) {
+    if (tabs.length === 1) return;
+
+    const currentIndex = tabs.findIndex((tab) => tab.id === tabId);
+    const nextTabs = tabs.filter((tab) => tab.id !== tabId);
+
+    setTabs(nextTabs);
+
+    if (activeTabId === tabId) {
+      const nextActive =
+        nextTabs[currentIndex - 1] || nextTabs[currentIndex] || nextTabs[0];
+      setActiveTabId(nextActive.id);
+    }
+  }
+
+  async function handleFilesSelected(e) {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+
+    const newTabs = [];
+    const newFiles = [];
+
+    for (const file of files) {
+      const fileId = `${file.name}-${file.lastModified}`;
+
+      newFiles.push({
+        id: fileId,
+        name: file.name,
+      });
+
+      const isTextFile =
+        file.type.startsWith("text/") ||
+        file.name.endsWith(".py") ||
+        file.name.endsWith(".js") ||
+        file.name.endsWith(".jsx") ||
+        file.name.endsWith(".ts") ||
+        file.name.endsWith(".tsx") ||
+        file.name.endsWith(".css") ||
+        file.name.endsWith(".html") ||
+        file.name.endsWith(".json") ||
+        file.name.endsWith(".txt") ||
+        file.name.endsWith(".md");
+
+      if (isTextFile) {
+        const content = await file.text();
+
+        newTabs.push({
+          id: fileId,
+          name: file.name,
+          language: file.name.endsWith(".py")
+            ? "python"
+            : file.name.endsWith(".css")
+            ? "css"
+            : file.name.endsWith(".html")
+            ? "html"
+            : file.name.endsWith(".json")
+            ? "json"
+            : file.name.endsWith(".ts") || file.name.endsWith(".tsx")
+            ? "typescript"
+            : file.name.endsWith(".js") || file.name.endsWith(".jsx")
+            ? "javascript"
+            : "plaintext",
+          content,
+          isBinary: false,
+        });
+      } else {
+        newTabs.push({
+          id: fileId,
+          name: file.name,
+          language: "plaintext",
+          content: "This file type cannot be previewed in the editor.",
+          isBinary: true,
+        });
+      }
+    }
+
+    setUploadedFiles((prev) => {
+      const existingIds = new Set(prev.map((file) => file.id));
+      return [...prev, ...newFiles.filter((file) => !existingIds.has(file.id))];
     });
+
+    setTabs((prev) => {
+      const existingIds = new Set(prev.map((tab) => tab.id));
+      const dedupedTabs = newTabs.filter((tab) => !existingIds.has(tab.id));
+      return [...prev, ...dedupedTabs];
+    });
+
+    if (newTabs.length > 0) {
+      setActiveTabId(newTabs[0].id);
+    }
+
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: Date.now(),
+        sender: "user",
+        text:
+          files.length === 1
+            ? `Uploaded file: ${files[0].name}`
+            : `Uploaded files: ${files.map((file) => file.name).join(", ")}`,
+      },
+      {
+        id: Date.now() + 1,
+        sender: "tutor",
+        text:
+          files.length === 1
+            ? `Got it — I can use ${files[0].name} for context.`
+            : "Got it — I can use those files for context.",
+      },
+    ]);
+
+    setShowUploadPrompt(false);
+    setShowFileConfirm(true);
+    e.target.value = "";
+  }
+
+  function startResize() {
+    if (isTutorCollapsed) return;
+    isResizingRef.current = true;
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+  }
+
+  function toggleTutorPanel() {
+    if (isTutorCollapsed) {
+      setRightPanelWidth(lastExpandedWidthRef.current || DEFAULT_RIGHT_PANEL_WIDTH);
+      setIsTutorCollapsed(false);
+      return;
+    }
+
+    lastExpandedWidthRef.current = rightPanelWidth;
+    setIsTutorCollapsed(true);
   }
 
   return (
-    <div className={`app ${isTutorCollapsed ? "tutor-collapsed" : ""}`}>
+    <div
+      ref={appRef}
+      className={`app ${isTutorCollapsed ? "tutor-collapsed" : ""} ${
+        accessibilityMode ? "accessibility-mode" : ""
+      }`}
+      style={{
+        "--ui-font-size": `${textSize}px`,
+        "--right-panel-width": isTutorCollapsed ? "0px" : `${rightPanelWidth}px`,
+      }}
+    >
       {showTutorModal && (
         <div className="modal-overlay">
           <div className="modal">
             <h3>Please select an AI tutor!</h3>
             <div className="modal-buttons">
-              <button
-                className="lion"
-                onClick={() => {
-                  setSelectedPersona("lion");
-                  setShowTutorModal(false);
-                  setShowUploadPrompt(true);
-                  setMessages([
-                    {
-                      id: 1,
-                      sender: "tutor",
-                      text: "Hi! I’m your lion tutor. Ask me about your code whenever you want.",
-                    },
-                  ]);
-                }}
-              >
+              <button className="lion" onClick={() => handleChooseTutor("lion")}>
                 Strict, teacher-like
               </button>
-
-              <button
-                className="panda"
-                onClick={() => {
-                  setSelectedPersona("panda");
-                  setShowTutorModal(false);
-                  setShowUploadPrompt(true);
-                  setMessages([
-                    {
-                      id: 1,
-                      sender: "tutor",
-                      text: "Hi! I’m your panda tutor. Ask me about your code whenever you want.",
-                    },
-                  ]);
-                }}
-              >
+              <button className="panda" onClick={() => handleChooseTutor("panda")}>
                 Friendly, peer like
               </button>
             </div>
@@ -163,50 +420,165 @@ function App() {
         </div>
       )}
 
-      <input
-        id="fileInput"
-        type="file"
-        style={{ display: "none" }}
-        onChange={(e) => {
-          const file = e.target.files?.[0] || null;
-          setUploadedFile(file);
-          setShowUploadPrompt(false);
-          setShowFileConfirm(true);
-        }}
-      />
-
       {showFileConfirm && (
         <div className="modal-overlay">
           <div className="modal">
             <h3>Add additional assignment files?</h3>
             <div className="uploaded-files">
               <strong>Uploaded Files:</strong>
-              {uploadedFile ? (
+              {uploadedFiles.length ? (
                 <ul>
-                  <li>{uploadedFile.name}</li>
+                  {uploadedFiles.map((file) => (
+                    <li key={file.id}>{file.name}</li>
+                  ))}
                 </ul>
               ) : (
                 <p>None</p>
               )}
             </div>
             <div className="modal-buttons">
-              <button onClick={() => setShowFileConfirm(false)}>Upload</button>
-              <button onClick={() => setShowFileConfirm(false)}>Skip</button>
+              <button onClick={() => document.getElementById("fileInput").click()}>
+                Upload More
+              </button>
+              <button onClick={() => setShowFileConfirm(false)}>Done</button>
             </div>
           </div>
         </div>
       )}
 
+      {showSettingsModal && (
+        <div className="modal-overlay">
+          <div className="modal settings-modal">
+            <h3>Settings</h3>
+
+            <div className="settings-group">
+              <label className="settings-row">
+                <span>Accessibility mode</span>
+                <input
+                  type="checkbox"
+                  checked={accessibilityMode}
+                  onChange={(e) => setAccessibilityMode(e.target.checked)}
+                />
+              </label>
+              <p className="settings-note">
+                Uses a higher-contrast blue / purple / orange palette.
+              </p>
+            </div>
+
+            <div className="settings-group">
+              <label htmlFor="textSizeRange">Text size: {textSize}px</label>
+              <input
+                id="textSizeRange"
+                type="range"
+                min="14"
+                max="22"
+                value={textSize}
+                onChange={(e) => setTextSize(Number(e.target.value))}
+              />
+            </div>
+
+            <div className="modal-buttons">
+              <button onClick={() => setShowSettingsModal(false)}>Done</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showResetWarning && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <h3>Warning</h3>
+            <p>Switching tutors will clear your current conversation. Continue?</p>
+            <div className="modal-buttons">
+              <button
+                onClick={() => {
+                  if (pendingPersona) {
+                    setSelectedPersona(pendingPersona);
+                    setMessages([
+                      {
+                        id: 1,
+                        sender: "tutor",
+                        text: DEFAULT_TUTOR_MESSAGES[pendingPersona],
+                      },
+                    ]);
+                  }
+
+                  setPendingPersona(null);
+                  setShowResetWarning(false);
+                  setChatInput("");
+                }}
+              >
+                Continue
+              </button>
+
+              <button
+                onClick={() => {
+                  setPendingPersona(null);
+                  setShowResetWarning(false);
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <input
+        id="fileInput"
+        type="file"
+        multiple
+        style={{ display: "none" }}
+        onChange={handleFilesSelected}
+      />
+
       <section className="left-panel">
         <div className="top-bar">
           <div className="top-left">
-            <button className="icon-button">⚙</button>
-            <button className="tab active">main.py</button>
-            <button className="tab">+</button>
+            <button
+              className="icon-button"
+              onClick={() => setShowSettingsModal(true)}
+              aria-label="Open settings"
+            >
+              ⚙
+            </button>
+
+            <div className="tab-list">
+              {tabs.map((tab) => (
+                <div
+                  key={tab.id}
+                  className={`tab ${tab.id === activeTabId ? "active" : ""}`}
+                  onClick={() => setActiveTabId(tab.id)}
+                >
+                  <span>{tab.name}</span>
+                  {tabs.length > 1 && (
+                    <button
+                      className="tab-close"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        closeTab(tab.id);
+                      }}
+                      aria-label={`Close ${tab.name}`}
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              ))}
+
+              <button className="tab add-tab" onClick={addNewPythonTab}>
+                +
+              </button>
+            </div>
           </div>
 
           <div className="top-right">
-            <button className="action-button">Upload File</button>
+            <button
+              className="action-button"
+              onClick={() => document.getElementById("fileInput").click()}
+            >
+              Upload File...
+            </button>
             <button className="action-button run-button" onClick={handleRun}>
               {isLoading ? "Running..." : "Run"}
             </button>
@@ -216,17 +588,19 @@ function App() {
         <div className="editor-section">
           <div className="editor-wrapper">
             <Editor
+              key={activeTab?.id}
               height="100%"
-              defaultLanguage="python"
-              value={code}
+              language={activeTab?.language || "python"}
+              value={activeTab?.content || ""}
               beforeMount={handleEditorWillMount}
-              theme="softGreenTheme"
-              onChange={(value) => setCode(value || "")}
+              theme={accessibilityMode ? "accessibilityTheme" : "softGreenTheme"}
+              onChange={(value) => updateTabContent(activeTabId, value)}
               options={{
-                fontSize: 16,
+                readOnly: activeTab?.isBinary || false,
+                fontSize: textSize,
                 fontFamily: "Consolas, 'Courier New', monospace",
                 minimap: { enabled: false },
-                wordWrap: "on",
+                wordWrap: "off",
                 scrollBeyondLastLine: false,
                 glyphMargin: false,
                 folding: false,
@@ -252,18 +626,38 @@ function App() {
             <div className="panel-title">Output</div>
             <pre>{output}</pre>
           </div>
+
+          <div className={`tutor-preview ${selectedPersona}`}>
+            <div className="tutor-preview-emoji">
+              <img
+                src={selectedPersona === "lion" ? lionImg : pandaImg}
+                alt="tutor"
+                />
+            </div>
+            <div className="tutor-preview-title">
+              {selectedPersona === "lion" ? "Lion Tutor" : "Panda Tutor"}
+            </div>
+            <div className="tutor-preview-subtitle">
+              {uploadedFiles.length ? uploadedFiles[0].name : "No file uploaded"}
+            </div>
+          </div>
         </div>
       </section>
 
-      <section className={`right-panel ${isTutorCollapsed ? "collapsed" : ""}`}>
+      <div className={`resize-handle ${isTutorCollapsed ? "collapsed" : ""}`}>
+        <div className="resize-hitbox" onMouseDown={startResize} />
+
         <button
+          type="button"
           className="collapse-toggle"
-          onClick={() => setIsTutorCollapsed((prev) => !prev)}
+          onClick={toggleTutorPanel}
           aria-label={isTutorCollapsed ? "Expand tutor panel" : "Collapse tutor panel"}
         >
           {isTutorCollapsed ? "‹" : "›"}
         </button>
+      </div>
 
+      <section className={`right-panel ${isTutorCollapsed ? "collapsed" : ""}`}>
         {!isTutorCollapsed && (
           <div className="right-panel-content">
             <div className="persona-selector">
@@ -271,7 +665,7 @@ function App() {
                 className={`persona-button lion ${
                   selectedPersona === "lion" ? "selected" : ""
                 }`}
-                onClick={() => setSelectedPersona("lion")}
+                onClick={() => attemptPersonaSwitch("lion")}
               >
                 Lion
               </button>
@@ -280,7 +674,7 @@ function App() {
                 className={`persona-button panda ${
                   selectedPersona === "panda" ? "selected" : ""
                 }`}
-                onClick={() => setSelectedPersona("panda")}
+                onClick={() => attemptPersonaSwitch("panda")}
               >
                 Panda
               </button>
@@ -288,31 +682,33 @@ function App() {
 
             <div className="chat-section">
               <div className="chat-messages">
-                {messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={`chat-row ${
-                      message.sender === "user" ? "user-row" : "tutor-row"
-                    }`}
-                  >
-                    {message.sender === "tutor" && (
-                      <div className="avatar">
-                        {selectedPersona === "lion" ? "🦁" : "🐼"}
-                      </div>
-                    )}
+  {messages.map((message) => (
+    <div
+      key={message.id}
+      className={`chat-row ${
+        message.sender === "user" ? "user-row" : "tutor-row"
+      }`}
+    >
+      {message.sender === "tutor" && (
+        <img
+          className="chat-avatar"
+          src={selectedPersona === "lion" ? lionImg : pandaImg}
+          alt="tutor"
+        />
+      )}
 
-                    <div
-                      className={`chat-message ${
-                        message.sender === "user"
-                          ? "user-message"
-                          : "tutor-message"
-                      }`}
-                    >
-                      {message.text}
-                    </div>
-                  </div>
-                ))}
-              </div>
+      <div
+        className={`chat-message ${
+          message.sender === "user"
+            ? "user-message"
+            : "tutor-message"
+        }`}
+      >
+        {message.text}
+      </div>
+    </div>
+  ))}
+</div>
 
               <div
                 className={`chat-input-row ${
@@ -321,7 +717,7 @@ function App() {
               >
                 <input
                   type="text"
-                  placeholder="Ask the tutor something..."
+                  placeholder="Type something..."
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
                   onFocus={() => setIsChatFocused(true)}
@@ -337,7 +733,7 @@ function App() {
                   disabled={!chatInput.trim()}
                   className={chatInput.trim() ? "send-active" : "send-disabled"}
                 >
-                  Send
+                  ➤
                 </button>
               </div>
             </div>
@@ -347,5 +743,3 @@ function App() {
     </div>
   );
 }
-
-export default App;
