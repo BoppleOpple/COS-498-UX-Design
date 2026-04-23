@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { sendMessage } from "../../claudeIntegration";
 
 export default function ChatPanel({
   collapsed,
@@ -26,16 +27,25 @@ export default function ChatPanel({
         id: Date.now(),
         sender: "user",
         text: chatInput,
-      },
-      {
-        id: Date.now() + 1,
-        sender: "tutor",
-        text:
-          selectedPersona === "lion"
-            ? "Direct answer: check your logic."
-            : "Hey! Maybe try checking your loop.",
-      },
+      }
     ]);
+
+    sendMessage(chatInput).then(response => {
+      let responseText = ""
+      for (const section of response) {
+        if (section.type === "text") {
+          responseText += section.text
+        }
+      }
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now() + 1,
+          sender: "tutor",
+          text: responseText
+        },
+      ]);
+    })
 
     setChatInput("");
   }

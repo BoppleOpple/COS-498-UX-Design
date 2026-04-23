@@ -1,10 +1,11 @@
 import Anthropic from "@anthropic-ai/sdk";
 
 const client = new Anthropic({
-  apiKey: import.meta.env.VITE_ANTHROPIC_API_KEY // This is the default and can be omitted
+  apiKey: import.meta.env.VITE_ANTHROPIC_API_KEY,
+  dangerouslyAllowBrowser: true
 });
 
-self.sendMessage = async (message = "Hello, Claude") => {
+export async function sendMessage(message = "Hello, Claude") {
   const response = await client.messages.create({
     max_tokens: 1024,
     messages: [{ role: "user", content: message }],
