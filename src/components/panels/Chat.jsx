@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { sendMessage } from "../../claudeIntegration";
+import { streamResponse } from "../../claudeIntegration";
 
 export default function ChatPanel({
   collapsed,
@@ -27,25 +27,37 @@ export default function ChatPanel({
         id: Date.now(),
         sender: "user",
         text: chatInput,
-      }
+      },
+      {
+        id: Date.now() + 1,
+        sender: "tutor",
+        text: "",
+      },
     ]);
 
-    sendMessage(chatInput).then(response => {
-      let responseText = ""
-      for (const section of response) {
-        if (section.type === "text") {
-          responseText += section.text
+    streamResponse(selectedPersona, chatInput, (responseText) => {
+      setMessages((prevMessages) => {
+        let messageIndex = null;
+
+        // find the last message from the tutor
+        for (let i = prevMessages.length - 1; i >= 0; i--) {
+          if (prevMessages[i].sender === "tutor") {
+            messageIndex = i;
+            break;
+          }
         }
-      }
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now() + 1,
-          sender: "tutor",
-          text: responseText
-        },
-      ]);
-    })
+
+        // if no message was found, escape
+        if (messageIndex === null) {
+          return prevMessages;
+        }
+
+        // update messages with new text
+        prevMessages[messageIndex].text = responseText;
+
+        return [...prevMessages];
+      });
+    });
 
     setChatInput("");
   }
