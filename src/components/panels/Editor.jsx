@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Editor from "@monaco-editor/react";
 
 import pythonWorker from "../../pythonWorker.js?worker";
+import { EditorTutorIcon } from "../Icon";
 
 export default function EditorPanel({
   accessibilityMode,
@@ -14,8 +15,6 @@ export default function EditorPanel({
   setShowSettingsModal,
   setHasError,
   selectedPersona,
-  lionImg,
-  pandaImg,
 }) {
   const [isLoading, setIsLoading] = useState(false);
   const [output, setOutput] = useState("Program output will appear here.");
@@ -229,12 +228,7 @@ export default function EditorPanel({
         </div>
 
         <div className={`tutor-preview ${selectedPersona}`}>
-          <div className="tutor-preview-emoji">
-            <img
-              src={selectedPersona === "lion" ? lionImg : pandaImg}
-              alt="tutor"
-            />
-          </div>
+          <EditorTutorIcon persona={selectedPersona} />
           <div className="tutor-preview-title">
             {selectedPersona === "lion" ? "Lion Tutor" : "Panda Tutor"}
           </div>

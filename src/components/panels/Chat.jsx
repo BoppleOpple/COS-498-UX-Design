@@ -3,8 +3,9 @@ import { streamResponse } from "../../claudeIntegration";
 import { useMessageDispacher, useMessages } from "../contexts/chatContext";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { ChatTutorIcon } from "../Icon";
 
-function Message({ message, image, selectedPersona }) {
+function Message({ message, selectedPersona }) {
   return (
     <div
       className={`chat-row ${
@@ -12,7 +13,7 @@ function Message({ message, image, selectedPersona }) {
       }`}
     >
       {message.sender === "assistant" && (
-        <img className="chat-avatar" src={image} alt="assistant" />
+        <ChatTutorIcon persona={selectedPersona}/>
       )}
 
       <div
@@ -33,9 +34,7 @@ export default function ChatPanel({
   setChatInput,
   hasError,
   setHasError,
-  attemptPersonaSwitch,
-  lionImg,
-  pandaImg,
+  attemptPersonaSwitch
 }) {
   const [isChatFocused, setIsChatFocused] = useState(false);
   const messages = useMessages();
@@ -99,7 +98,6 @@ export default function ChatPanel({
               {messages.map((message) => (
                 <Message
                   message={message}
-                  image={selectedPersona === "lion" ? lionImg : pandaImg}
                   selectedPersona={selectedPersona}
                   key={message.id}
                 />

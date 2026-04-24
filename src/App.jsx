@@ -1,6 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import lionImg from "./assets/lionDraft 1.png";
-import pandaImg from "./assets/redPandaDraft 1.png";
 import TutorSelectionModal from "./components/modals/TutorSelection";
 import AssignmentUploadModal from "./components/modals/Upload";
 import FileConfirmationModal from "./components/modals/FileConfirm";
@@ -50,13 +48,6 @@ export default function App() {
   const [chatInput, setChatInput] = useState("");
   const messages = useMessages();
   const messageDispacher = useMessageDispacher();
-  // const [messages, setMessages] = useState([
-  //   {
-  //     id: 1,
-  //     sender: "tutor",
-  //     text: "Select a tutor to begin.",
-  //   },
-  // ]);
 
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [rightPanelWidth, setRightPanelWidth] = useState(
@@ -328,8 +319,6 @@ export default function App() {
         setShowSettingsModal={setShowSettingsModal}
         setHasError={setHasError}
         selectedPersona={selectedPersona}
-        lionImg={lionImg}
-        pandaImg={pandaImg}
       />
 
       <div className={`resize-handle ${isTutorCollapsed ? "collapsed" : ""}`}>
@@ -356,8 +345,6 @@ export default function App() {
           hasError={hasError}
           setHasError={setHasError}
           attemptPersonaSwitch={attemptPersonaSwitch}
-          lionImg={lionImg}
-          pandaImg={pandaImg}
         />
       </ChatContextProvider>
     </div>
