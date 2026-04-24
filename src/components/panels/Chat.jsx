@@ -1,11 +1,34 @@
-import { useState } from "react";
+import { useState, Fragment } from "react";
 import { streamResponse } from "../../claudeIntegration";
+import { useMessageDispacher, useMessages } from "../contexts/chatContext";
+import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+
+function Message({ message, image }) {
+  return (
+    <div
+      className={`chat-row ${
+        message.sender === "user" ? "user-row" : "tutor-row"
+      }`}
+    >
+      {message.sender === "assistant" && (
+        <img className="chat-avatar" src={image} alt="assistant" />
+      )}
+
+      <div
+        className={`chat-message ${
+          message.sender === "user" ? "user-message" : "tutor-message"
+        }`}
+      >
+        <Markdown remarkPlugins={[remarkGfm]}>{message.text}</Markdown>
+      </div>
+    </div>
+  );
+}
 
 export default function ChatPanel({
   collapsed,
   selectedPersona,
-  messages,
-  setMessages,
   chatInput,
   setChatInput,
   hasError,
@@ -15,47 +38,32 @@ export default function ChatPanel({
   pandaImg,
 }) {
   const [isChatFocused, setIsChatFocused] = useState(false);
+  const messages = useMessages();
+  const messageDispacher = useMessageDispacher();
 
   function handleSendMessage() {
     if (!chatInput.trim()) return;
 
     setHasError(false);
 
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: Date.now(),
-        sender: "user",
-        text: chatInput,
-      },
-      {
-        id: Date.now() + 1,
-        sender: "tutor",
-        text: "",
-      },
-    ]);
+    const responseIndex = messages.length + 1;
+
+    messageDispacher({
+      action: "add",
+      sender: "user",
+      text: chatInput,
+    });
+    messageDispacher({
+      action: "add",
+      sender: "assistant",
+      text: "",
+    });
 
     streamResponse(selectedPersona, chatInput, (responseText) => {
-      setMessages((prevMessages) => {
-        let messageIndex = null;
-
-        // find the last message from the tutor
-        for (let i = prevMessages.length - 1; i >= 0; i--) {
-          if (prevMessages[i].sender === "tutor") {
-            messageIndex = i;
-            break;
-          }
-        }
-
-        // if no message was found, escape
-        if (messageIndex === null) {
-          return prevMessages;
-        }
-
-        // update messages with new text
-        prevMessages[messageIndex].text = responseText;
-
-        return [...prevMessages];
+      messageDispacher({
+        action: "update",
+        id: responseIndex,
+        text: responseText,
       });
     });
 
@@ -89,30 +97,11 @@ export default function ChatPanel({
           <div className="chat-section">
             <div className="chat-messages">
               {messages.map((message) => (
-                <div
+                <Message
+                  message={message}
+                  image={selectedPersona === "lion" ? lionImg : pandaImg}
                   key={message.id}
-                  className={`chat-row ${
-                    message.sender === "user" ? "user-row" : "tutor-row"
-                  }`}
-                >
-                  {message.sender === "tutor" && (
-                    <img
-                      className="chat-avatar"
-                      src={selectedPersona === "lion" ? lionImg : pandaImg}
-                      alt="tutor"
-                    />
-                  )}
-
-                  <div
-                    className={`chat-message ${
-                      message.sender === "user"
-                        ? "user-message"
-                        : "tutor-message"
-                    }`}
-                  >
-                    {message.text}
-                  </div>
-                </div>
+                />
               ))}
             </div>
 

@@ -8,13 +8,13 @@ import SettingsModal from "./components/modals/Settings";
 import ChangeTutorModal from "./components/modals/ChangeTutor";
 import EditorPanel from "./components/panels/Editor";
 import ChatPanel from "./components/panels/Chat";
+import {
+  ChatContextProvider,
+  useMessageDispacher,
+  useMessages,
+} from "./components/contexts/chatContext";
 
 const DEFAULT_CODE = `print("Hello world")`;
-
-const DEFAULT_TUTOR_MESSAGES = {
-  lion: "Hi! I’m your lion tutor. Ask me about your code whenever you want.",
-  panda: "Hi! I’m your panda tutor. Ask me about your code whenever you want.",
-};
 
 const MIN_RIGHT_PANEL_WIDTH = 320;
 const MAX_RIGHT_PANEL_WIDTH = 900;
@@ -37,32 +37,35 @@ export default function App() {
   const [textSize, setTextSize] = useState(16);
 
   const [tabs, setTabs] = useState([
-      {
-        id: "main.py",
-        name: "main.py",
-        language: "python",
-        content: DEFAULT_CODE,
-        isBinary: false,
-      },
-    ]);
+    {
+      id: "main.py",
+      name: "main.py",
+      language: "python",
+      content: DEFAULT_CODE,
+      isBinary: false,
+    },
+  ]);
   const [activeTabId, setActiveTabId] = useState("main.py");
 
   const [chatInput, setChatInput] = useState("");
-  const [messages, setMessages] = useState([
-    {
-      id: 1,
-      sender: "tutor",
-      text: "Select a tutor to begin.",
-    },
-  ]);
+  const messages = useMessages();
+  const messageDispacher = useMessageDispacher();
+  // const [messages, setMessages] = useState([
+  //   {
+  //     id: 1,
+  //     sender: "tutor",
+  //     text: "Select a tutor to begin.",
+  //   },
+  // ]);
 
   const [uploadedFiles, setUploadedFiles] = useState([]);
-  const [rightPanelWidth, setRightPanelWidth] = useState(DEFAULT_RIGHT_PANEL_WIDTH);
+  const [rightPanelWidth, setRightPanelWidth] = useState(
+    DEFAULT_RIGHT_PANEL_WIDTH,
+  );
 
   const appRef = useRef(null);
   const isResizingRef = useRef(false);
   const lastExpandedWidthRef = useRef(DEFAULT_RIGHT_PANEL_WIDTH);
-
 
   useEffect(() => {
     function handleMouseMove(event) {
@@ -72,7 +75,7 @@ export default function App() {
       const nextWidth = appRect.right - event.clientX;
       const clampedWidth = Math.max(
         MIN_RIGHT_PANEL_WIDTH,
-        Math.min(MAX_RIGHT_PANEL_WIDTH, nextWidth)
+        Math.min(MAX_RIGHT_PANEL_WIDTH, nextWidth),
       );
 
       setRightPanelWidth(clampedWidth);
@@ -98,13 +101,10 @@ export default function App() {
     setSelectedPersona(persona);
     setShowTutorModal(false);
     setShowUploadPrompt(true);
-    setMessages([
-      {
-        id: 1,
-        sender: "tutor",
-        text: DEFAULT_TUTOR_MESSAGES[persona],
-      },
-    ]);
+    messageDispacher({
+      action: "reset",
+      tutor: persona,
+    });
   }
 
   function attemptPersonaSwitch(newPersona) {
@@ -112,13 +112,10 @@ export default function App() {
 
     if (messages.length <= 1) {
       setSelectedPersona(newPersona);
-      setMessages([
-        {
-          id: 1,
-          sender: "tutor",
-          text: DEFAULT_TUTOR_MESSAGES[newPersona],
-        },
-      ]);
+      messageDispacher({
+        action: "reset",
+        tutor: newPersona,
+      });
       return;
     }
 
@@ -163,16 +160,16 @@ export default function App() {
           language: file.name.endsWith(".py")
             ? "python"
             : file.name.endsWith(".css")
-            ? "css"
-            : file.name.endsWith(".html")
-            ? "html"
-            : file.name.endsWith(".json")
-            ? "json"
-            : file.name.endsWith(".ts") || file.name.endsWith(".tsx")
-            ? "typescript"
-            : file.name.endsWith(".js") || file.name.endsWith(".jsx")
-            ? "javascript"
-            : "plaintext",
+              ? "css"
+              : file.name.endsWith(".html")
+                ? "html"
+                : file.name.endsWith(".json")
+                  ? "json"
+                  : file.name.endsWith(".ts") || file.name.endsWith(".tsx")
+                    ? "typescript"
+                    : file.name.endsWith(".js") || file.name.endsWith(".jsx")
+                      ? "javascript"
+                      : "plaintext",
           content,
           isBinary: false,
         });
@@ -202,25 +199,23 @@ export default function App() {
       setActiveTabId(newTabs[0].id);
     }
 
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: Date.now(),
-        sender: "user",
-        text:
-          files.length === 1
-            ? `Uploaded file: ${files[0].name}`
-            : `Uploaded files: ${files.map((file) => file.name).join(", ")}`,
-      },
-      {
-        id: Date.now() + 1,
-        sender: "tutor",
-        text:
-          files.length === 1
-            ? `Got it — I can use ${files[0].name} for context.`
-            : "Got it — I can use those files for context.",
-      },
-    ]);
+    messageDispacher({
+      action: "add",
+      sender: "user",
+      text:
+        files.length === 1
+          ? `Uploaded file: ${files[0].name}`
+          : `Uploaded files: ${files.map((file) => file.name).join(", ")}`,
+    });
+
+    messageDispacher({
+      action: "add",
+      sender: "assistant",
+      text:
+        files.length === 1
+          ? `Got it — I can use ${files[0].name} for context.`
+          : "Got it — I can use those files for context.",
+    });
 
     setShowUploadPrompt(false);
     setShowFileConfirm(true);
@@ -236,7 +231,9 @@ export default function App() {
 
   function toggleTutorPanel() {
     if (isTutorCollapsed) {
-      setRightPanelWidth(lastExpandedWidthRef.current || DEFAULT_RIGHT_PANEL_WIDTH);
+      setRightPanelWidth(
+        lastExpandedWidthRef.current || DEFAULT_RIGHT_PANEL_WIDTH,
+      );
       setIsTutorCollapsed(false);
       return;
     }
@@ -295,13 +292,10 @@ export default function App() {
           continueOnClick={() => {
             if (pendingPersona) {
               setSelectedPersona(pendingPersona);
-              setMessages([
-                {
-                  id: 1,
-                  sender: "tutor",
-                  text: DEFAULT_TUTOR_MESSAGES[pendingPersona],
-                },
-              ]);
+              messageDispacher({
+                action: "reset",
+                tutor: pendingPersona,
+              });
             }
 
             setPendingPersona(null);
@@ -353,19 +347,19 @@ export default function App() {
         </button>
       </div>
 
-      <ChatPanel
-        collapsed={isTutorCollapsed}
-        selectedPersona={selectedPersona}
-        messages={messages}
-        setMessages={setMessages}
-        chatInput={chatInput}
-        setChatInput={setChatInput}
-        hasError={hasError}
-        setHasError={setHasError}
-        attemptPersonaSwitch={attemptPersonaSwitch}
-        lionImg={lionImg}
-        pandaImg={pandaImg}
-      />
+      <ChatContextProvider>
+        <ChatPanel
+          collapsed={isTutorCollapsed}
+          selectedPersona={selectedPersona}
+          chatInput={chatInput}
+          setChatInput={setChatInput}
+          hasError={hasError}
+          setHasError={setHasError}
+          attemptPersonaSwitch={attemptPersonaSwitch}
+          lionImg={lionImg}
+          pandaImg={pandaImg}
+        />
+      </ChatContextProvider>
     </div>
   );
 }
