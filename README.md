@@ -1,7 +1,13 @@
-## TO RUN:
-Download files and in terminal run:
+# Programming Character Tool
+
+## Running:
+
+```sh
+git clone https://github.com/BoppleOpple/programming-character-tool.git
+cd programming-character-tool
 npm install
 npm run dev
+```
 
 # React + Vite
 
