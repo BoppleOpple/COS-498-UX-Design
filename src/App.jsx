@@ -9,9 +9,9 @@ import ChatPanel from "./components/panels/Chat";
 import {
   ChatContextProvider,
   useMessageDispacher,
-  useMessages,
 } from "./components/contexts/chatContext";
 import SidebarPanel from "./components/panels/Sidebar";
+import InfoModal from "./components/modals/Info";
 
 const DEFAULT_CODE = `print("Hello world")`;
 
@@ -30,6 +30,7 @@ export default function App() {
   const [showUploadPrompt, setShowUploadPrompt] = useState(false);
   const [showFileConfirm, setShowFileConfirm] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showInfoModal, setShowInfoModal] = useState(false);
   const [showResetWarning, setShowResetWarning] = useState(false);
 
   const [accessibilityMode, setAccessibilityMode] = useState(false);
@@ -47,7 +48,6 @@ export default function App() {
   const [activeTabId, setActiveTabId] = useState("main.py");
 
   const [chatInput, setChatInput] = useState("");
-  const messages = useMessages();
   const messageDispacher = useMessageDispacher();
 
   const [uploadedFiles, setUploadedFiles] = useState([]);
@@ -101,15 +101,6 @@ export default function App() {
 
   function attemptPersonaSwitch(newPersona) {
     if (newPersona === selectedPersona) return;
-
-    if (messages.length <= 1) {
-      setSelectedPersona(newPersona);
-      messageDispacher({
-        action: "reset",
-        tutor: newPersona,
-      });
-      return;
-    }
 
     setPendingPersona(newPersona);
     setShowResetWarning(true);
@@ -247,59 +238,60 @@ export default function App() {
           : `${rightPanelWidth}px`,
       }}
     >
-      {showTutorModal && (
-        <TutorSelectionModal
-          lionOnClick={() => handleChooseTutor("lion")}
-          pandaOnClick={() => handleChooseTutor("panda")}
-        />
-      )}
 
-      {showUploadPrompt && (
-        <AssignmentUploadModal
-          uploadOnClick={() => document.getElementById("fileInput").click()}
-          cancelOnClick={() => setShowUploadPrompt(false)}
-        />
-      )}
+      <TutorSelectionModal
+        active={showTutorModal}
+        lionOnClick={() => handleChooseTutor("lion")}
+        pandaOnClick={() => handleChooseTutor("panda")}
+      />
 
-      {showFileConfirm && (
-        <FileConfirmationModal
-          uploadedFiles={uploadedFiles}
-          uploadOnClick={() => document.getElementById("fileInput").click()}
-          doneOnClick={() => setShowFileConfirm(false)}
-        />
-      )}
+      <AssignmentUploadModal
+        active={showUploadPrompt}
+        uploadOnClick={() => document.getElementById("fileInput").click()}
+        cancelOnClick={() => setShowUploadPrompt(false)}
+      />
 
-      {showSettingsModal && (
-        <SettingsModal
-          accessibilityMode={accessibilityMode}
-          setAccessibilityMode={setAccessibilityMode}
-          textSize={textSize}
-          setTextSize={setTextSize}
-          doneOnClick={() => setShowSettingsModal(false)}
-        />
-      )}
+      <FileConfirmationModal
+        active={showFileConfirm}
+        uploadedFiles={uploadedFiles}
+        uploadOnClick={() => document.getElementById("fileInput").click()}
+        doneOnClick={() => setShowFileConfirm(false)}
+      />
 
-      {showResetWarning && (
-        <ChangeTutorModal
-          continueOnClick={() => {
-            if (pendingPersona) {
-              setSelectedPersona(pendingPersona);
-              messageDispacher({
-                action: "reset",
-                tutor: pendingPersona,
-              });
-            }
+      <SettingsModal
+        active={showSettingsModal}
+        accessibilityMode={accessibilityMode}
+        setAccessibilityMode={setAccessibilityMode}
+        textSize={textSize}
+        setTextSize={setTextSize}
+        doneOnClick={() => setShowSettingsModal(false)}
+      />
 
-            setPendingPersona(null);
-            setShowResetWarning(false);
-            setChatInput("");
-          }}
-          cancelOnClick={() => {
-            setPendingPersona(null);
-            setShowResetWarning(false);
-          }}
-        />
-      )}
+      <InfoModal
+        active={showInfoModal}
+        doneOnClick={() => setShowInfoModal(false)}
+      />
+
+      <ChangeTutorModal
+        active={showResetWarning}
+        continueOnClick={() => {
+          if (pendingPersona) {
+            setSelectedPersona(pendingPersona);
+            messageDispacher({
+              action: "reset",
+              tutor: pendingPersona,
+            });
+          }
+
+          setPendingPersona(null);
+          setShowResetWarning(false);
+          setChatInput("");
+        }}
+        cancelOnClick={() => {
+          setPendingPersona(null);
+          setShowResetWarning(false);
+        }}
+      />
 
       <input
         id="fileInput"
@@ -311,6 +303,7 @@ export default function App() {
 
       <SidebarPanel
         setShowSettingsModal={setShowSettingsModal}
+        setShowInfoModal={setShowInfoModal}
       />
 
       <EditorPanel
@@ -340,17 +333,15 @@ export default function App() {
         </button>
       </div>
 
-      <ChatContextProvider>
-        <ChatPanel
-          collapsed={isTutorCollapsed}
-          selectedPersona={selectedPersona}
-          chatInput={chatInput}
-          setChatInput={setChatInput}
-          hasError={hasError}
-          setHasError={setHasError}
-          attemptPersonaSwitch={attemptPersonaSwitch}
-        />
-      </ChatContextProvider>
+      <ChatPanel
+        collapsed={isTutorCollapsed}
+        selectedPersona={selectedPersona}
+        chatInput={chatInput}
+        setChatInput={setChatInput}
+        hasError={hasError}
+        setHasError={setHasError}
+        attemptPersonaSwitch={attemptPersonaSwitch}
+      />
     </div>
   );
 }

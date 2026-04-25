@@ -67,10 +67,10 @@ function messagesReducer(messages, data) {
     case "reset":
       switch (data.tutor) {
         case "lion":
-          return LION_DEFAULT_TUTOR_MESSAGES;
+          return [...LION_DEFAULT_TUTOR_MESSAGES];
 
         case "panda":
-          return PANDA_DEFAULT_TUTOR_MESSAGES;
+          return [...PANDA_DEFAULT_TUTOR_MESSAGES];
 
         default:
           throw Error(`unknown action: ${data.action}`);

@@ -1,15 +1,23 @@
-export default function ChangeTutorModal({ continueOnClick, cancelOnClick }) {
+export default function ChangeTutorModal({
+  active,
+  continueOnClick,
+  cancelOnClick,
+}) {
   return (
-    <div className="modal-overlay">
-      <div className="modal">
-        <h3>Warning</h3>
-        <p>Switching tutors will clear your current conversation. Continue?</p>
-        <div className="modal-buttons">
-          <button onClick={continueOnClick}>Continue</button>
+    active && (
+      <div className="modal-overlay">
+        <div className="modal">
+          <h3>Warning</h3>
+          <p>
+            Switching tutors will clear your current conversation. Continue?
+          </p>
+          <div className="modal-buttons">
+            <button onClick={continueOnClick}>Continue</button>
 
-          <button onClick={cancelOnClick}>Cancel</button>
+            <button onClick={cancelOnClick}>Cancel</button>
+          </div>
         </div>
       </div>
-    </div>
+    )
   );
 }

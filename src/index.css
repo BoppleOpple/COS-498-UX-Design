@@ -136,7 +136,7 @@ textarea {
   white-space: nowrap;
 }
 
-.settings-button,
+.sidebar-button,
 .tab,
 .action-button {
   border: none;
@@ -146,7 +146,7 @@ textarea {
   color: white;
 }
 
-.settings-button {
+.sidebar-button {
   width: 1fr;
   aspect-ratio: 1;
   background: none;
@@ -154,11 +154,11 @@ textarea {
   padding: 4px;
 }
 
-.settings-button:hover {
+.sidebar-button:hover {
   background: var(--dark-green);
 }
 
-.settings-button-icon {
+.sidebar-button-icon {
   width: 100%;
   height: 100%;
   --color-fill: #ffffff;
@@ -632,7 +632,7 @@ textarea {
 
 /* force inheritance everywhere important */
 .tab,
-.settings-button,
+.sidebar-button,
 .action-button,
 .persona-button,
 .modal,
