@@ -12,8 +12,7 @@ import {
 } from "./components/contexts/chatContext";
 import SidebarPanel from "./components/panels/Sidebar";
 import InfoModal from "./components/modals/Info";
-
-const DEFAULT_CODE = `print("Hello world")`;
+import { useTabDispacher, useTabs } from "./components/contexts/tabContext";
 
 const MIN_RIGHT_PANEL_WIDTH = 320;
 const MAX_RIGHT_PANEL_WIDTH = 900;
@@ -36,15 +35,9 @@ export default function App() {
   const [accessibilityMode, setAccessibilityMode] = useState(false);
   const [textSize, setTextSize] = useState(16);
 
-  const [tabs, setTabs] = useState([
-    {
-      id: "main.py",
-      name: "main.py",
-      language: "python",
-      content: DEFAULT_CODE,
-      isBinary: false,
-    },
-  ]);
+  const tabs = useTabs();
+  const tabDispacher = useTabDispacher();
+
   const [activeTabId, setActiveTabId] = useState("main.py");
 
   const [chatInput, setChatInput] = useState("");
@@ -172,10 +165,12 @@ export default function App() {
       return [...prev, ...newFiles.filter((file) => !existingIds.has(file.id))];
     });
 
-    setTabs((prev) => {
-      const existingIds = new Set(prev.map((tab) => tab.id));
-      const dedupedTabs = newTabs.filter((tab) => !existingIds.has(tab.id));
-      return [...prev, ...dedupedTabs];
+    const existingTabIds = new Set(tabs.map((tab) => tab.id));
+    const dedupedTabs = newTabs.filter((tab) => !existingTabIds.has(tab.id));
+
+    tabDispacher({
+      action: "addMany",
+      tabs: dedupedTabs
     });
 
     if (newTabs.length > 0) {
@@ -310,8 +305,6 @@ export default function App() {
         accessibilityMode={accessibilityMode}
         textSize={textSize}
         uploadedFiles={uploadedFiles}
-        tabs={tabs}
-        setTabs={setTabs}
         activeTabId={activeTabId}
         setActiveTabId={setActiveTabId}
         setHasError={setHasError}
