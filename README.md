@@ -8,6 +8,10 @@ cd programming-character-tool
 npm install
 npm run dev
 ```
+To interface with Claude, add your Anthropic key to a `.env` file:
+```env
+VITE_ANTHROPIC_API_KEY=<your-api-key>
+```
 
 # React + Vite
 
