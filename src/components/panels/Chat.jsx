@@ -1,9 +1,10 @@
-import { useState, Fragment } from "react";
+import { useState, Fragment, useEffect } from "react";
 import { streamResponse } from "../../claudeIntegration";
 import { useMessageDispacher, useMessages } from "../contexts/chatContext";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { ChatTutorIcon } from "../Icon";
+import { useTabs } from "../contexts/tabContext";
 
 function Message({ message, selectedPersona }) {
   return (
@@ -40,31 +41,39 @@ export default function ChatPanel({
   const messages = useMessages();
   const messageDispacher = useMessageDispacher();
 
+  const tabs = useTabs();
+
+  useEffect(()=>{
+    if (messages[messages.length - 1].sender === "user") {
+      const responseIndex = messages.length
+
+      streamResponse(selectedPersona, messages, tabs, (responseText) => {
+        messageDispacher({
+          action: "update",
+          id: responseIndex,
+          text: responseText,
+        });
+      });
+
+      messageDispacher({
+        action: "add",
+        sender: "assistant",
+        text: "*thinking...*",
+      });
+    }
+  },[messages, tabs, messageDispacher, selectedPersona] );
+
   function handleSendMessage() {
     if (!chatInput.trim()) return;
 
     setHasError(false);
-
-    const responseIndex = messages.length + 1;
 
     messageDispacher({
       action: "add",
       sender: "user",
       text: chatInput,
     });
-    messageDispacher({
-      action: "add",
-      sender: "assistant",
-      text: "",
-    });
-
-    streamResponse(selectedPersona, chatInput, (responseText) => {
-      messageDispacher({
-        action: "update",
-        id: responseIndex,
-        text: responseText,
-      });
-    });
+    
 
     setChatInput("");
   }

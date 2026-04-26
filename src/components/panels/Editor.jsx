@@ -3,13 +3,12 @@ import Editor from "@monaco-editor/react";
 
 import pythonWorker from "../../pythonWorker.js?worker";
 import { EditorTutorIcon } from "../Icon";
+import { useTabDispacher, useTabs } from "../contexts/tabContext";
 
 export default function EditorPanel({
   accessibilityMode,
   textSize,
   uploadedFiles,
-  tabs,
-  setTabs,
   activeTabId,
   setActiveTabId,
   setHasError,
@@ -17,6 +16,8 @@ export default function EditorPanel({
 }) {
   const [isLoading, setIsLoading] = useState(false);
   const [output, setOutput] = useState("Program output will appear here.");
+  const tabs = useTabs();
+  const tabDispacher = useTabDispacher();
 
   const activeTab = useMemo(
     () => tabs.find((tab) => tab.id === activeTabId) || tabs[0],
@@ -52,11 +53,11 @@ export default function EditorPanel({
   }
 
   function updateTabContent(tabId, value) {
-    setTabs((prev) =>
-      prev.map((tab) =>
-        tab.id === tabId ? { ...tab, content: value || "" } : tab,
-      ),
-    );
+    tabDispacher({
+      action: "update",
+      id: tabId,
+      content: value
+    })
   }
 
   function handleEditorWillMount(monaco) {
@@ -103,15 +104,15 @@ export default function EditorPanel({
       tab.name.startsWith("main"),
     ).length;
 
-    const newTab = {
+    tabDispacher({
+      action: "add",
       id: newId,
       name: `main-${newTabNumber}.py`,
       language: "python",
       content: "",
       isBinary: false,
-    };
+    });
 
-    setTabs((prev) => [...prev, newTab]);
     setActiveTabId(newId);
   }
 
@@ -121,13 +122,17 @@ export default function EditorPanel({
     const currentIndex = tabs.findIndex((tab) => tab.id === tabId);
     const nextTabs = tabs.filter((tab) => tab.id !== tabId);
 
-    setTabs(nextTabs);
-
     if (activeTabId === tabId) {
       const nextActive =
         nextTabs[currentIndex - 1] || nextTabs[currentIndex] || nextTabs[0];
       setActiveTabId(nextActive.id);
     }
+
+    tabDispacher({
+      action: "remove",
+      id: tabId
+    });
+
   }
 
   return (

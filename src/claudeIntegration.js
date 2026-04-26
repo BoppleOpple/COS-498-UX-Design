@@ -22,24 +22,55 @@ const client = new Anthropic({
   dangerouslyAllowBrowser: true,
 });
 
+function getStream(
+  claudeMessages,
+  systemPrompt
+) {
+  return client.messages.stream({
+    max_tokens: 1024,
+    messages: claudeMessages,
+    model: "claude-opus-4-7",
+    system: systemPrompt,
+  });
+}
+
 export async function streamResponse(
   tutor,
-  message,
+  messages,
+  tabs,
   responseCallback = console.log,
 ) {
   let systemPrompt = "";
+
   if (tutor === "lion") {
     systemPrompt = LION_SYSTEM_PROMPT;
   } else if (tutor === "panda") {
     systemPrompt = PANDA_SYSTEM_PROMPT;
   }
 
-  const stream = client.messages.stream({
-    max_tokens: 1024,
-    messages: [{ role: "user", content: message }],
-    model: "claude-opus-4-7",
-    system: systemPrompt,
+  const claudeMessages = messages.map(message => ({
+    role: message.sender,
+    content: message.text,
+  }));
+
+  let codeMessageText = "Here's my current code:"
+  for (let file of tabs) {
+    if (file.language === "python") {
+      codeMessageText += `\n${file.name}: \`\`\`\n`
+      codeMessageText += file.content
+      codeMessageText += "\n```\n"
+    }
+  }
+
+  claudeMessages.push({
+    role: "user",
+    content: codeMessageText
   });
+
+  const stream = getStream(
+    claudeMessages,
+    systemPrompt,
+  );
 
   let messageBody = "";
   for await (const event of stream) {
